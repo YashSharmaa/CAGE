@@ -1,0 +1,205 @@
+{
+  "dashboard": {
+    "id": null,
+    "uid": "cage-overview",
+    "title": "CAGE - Sandbox Execution Overview",
+    "tags": ["cage", "sandbox", "security"],
+    "timezone": "browser",
+    "schemaVersion": 38,
+    "version": 1,
+    "refresh": "5s",
+    "panels": [
+      {
+        "id": 1,
+        "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+        "type": "stat",
+        "title": "Active Sessions",
+        "targets": [{
+          "expr": "cage_active_sessions",
+          "refId": "A"
+        }],
+        "options": {
+          "colorMode": "value",
+          "graphMode": "area"
+        }
+      },
+      {
+        "id": 2,
+        "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
+        "type": "stat",
+        "title": "Total Executions",
+        "targets": [{
+          "expr": "cage_total_executions",
+          "refId": "A"
+        }],
+        "options": {
+          "colorMode": "value"
+        }
+      },
+      {
+        "id": 3,
+        "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
+        "type": "stat",
+        "title": "Error Rate (last 1h)",
+        "targets": [{
+          "expr": "rate(cage_executions_error_total[1h])",
+          "refId": "A"
+        }],
+        "options": {
+          "colorMode": "value",
+          "graphMode": "area"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percentunit",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 0.05, "color": "yellow"},
+                {"value": 0.1, "color": "red"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 4,
+        "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
+        "type": "stat",
+        "title": "Security Events",
+        "targets": [{
+          "expr": "sum(rate(cage_security_events_total[5m]))",
+          "refId": "A"
+        }],
+        "options": {
+          "colorMode": "value"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 1, "color": "yellow"},
+                {"value": 10, "color": "red"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 5,
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
+        "type": "graph",
+        "title": "Execution Rate by Language",
+        "targets": [{
+          "expr": "sum by(language) (rate(cage_executions_total[5m]))",
+          "legendFormat": "{{language}}",
+          "refId": "A"
+        }],
+        "yaxes": [{
+          "label": "executions/sec",
+          "format": "short"
+        }]
+      },
+      {
+        "id": 6,
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
+        "type": "graph",
+        "title": "Execution Duration (P50, P95, P99)",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.50, sum by(le) (rate(cage_execution_duration_seconds_bucket[5m])))",
+            "legendFormat": "P50",
+            "refId": "A"
+          },
+          {
+            "expr": "histogram_quantile(0.95, sum by(le) (rate(cage_execution_duration_seconds_bucket[5m])))",
+            "legendFormat": "P95",
+            "refId": "B"
+          },
+          {
+            "expr": "histogram_quantile(0.99, sum by(le) (rate(cage_execution_duration_seconds_bucket[5m])))",
+            "legendFormat": "P99",
+            "refId": "C"
+          }
+        ],
+        "yaxes": [{
+          "label": "seconds",
+          "format": "s"
+        }]
+      },
+      {
+        "id": 7,
+        "gridPos": {"h": 8, "w": 8, "x": 0, "y": 12},
+        "type": "graph",
+        "title": "Resource Usage - CPU",
+        "targets": [{
+          "expr": "cage_cpu_usage_percent",
+          "legendFormat": "CPU %",
+          "refId": "A"
+        }],
+        "yaxes": [{
+          "label": "percent",
+          "format": "percent",
+          "max": 100
+        }]
+      },
+      {
+        "id": 8,
+        "gridPos": {"h": 8, "w": 8, "x": 8, "y": 12},
+        "type": "graph",
+        "title": "Resource Usage - Memory",
+        "targets": [{
+          "expr": "cage_memory_usage_mb",
+          "legendFormat": "Memory MB",
+          "refId": "A"
+        }],
+        "yaxes": [{
+          "label": "megabytes",
+          "format": "decmbytes"
+        }]
+      },
+      {
+        "id": 9,
+        "gridPos": {"h": 8, "w": 8, "x": 16, "y": 12},
+        "type": "graph",
+        "title": "Resource Usage - Disk",
+        "targets": [{
+          "expr": "cage_disk_usage_mb",
+          "legendFormat": "Disk MB",
+          "refId": "A"
+        }],
+        "yaxes": [{
+          "label": "megabytes",
+          "format": "decmbytes"
+        }]
+      },
+      {
+        "id": 10,
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 20},
+        "type": "table",
+        "title": "Top Users by Execution Count",
+        "targets": [{
+          "expr": "topk(10, sum by(user) (cage_executions_total))",
+          "format": "table",
+          "instant": true,
+          "refId": "A"
+        }],
+        "transformations": [
+          {
+            "id": "organize",
+            "options": {
+              "excludeByName": {"Time": true},
+              "renameByName": {
+                "user": "User",
+                "Value": "Total Executions"
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

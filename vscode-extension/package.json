@@ -1,0 +1,91 @@
+{
+  "name": "cage-code-executor",
+  "displayName": "CAGE Code Executor",
+  "description": "Execute code selections in CAGE sandbox directly from VS Code",
+  "version": "1.0.0",
+  "publisher": "cage-project",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other",
+    "Programming Languages"
+  ],
+  "activationEvents": [
+    "onCommand:cage.executeSelection",
+    "onCommand:cage.executeFile",
+    "onCommand:cage.uploadFile",
+    "onCommand:cage.viewWorkspace",
+    "onCommand:cage.configure"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "cage.executeSelection",
+        "title": "CAGE: Execute Selection",
+        "category": "CAGE"
+      },
+      {
+        "command": "cage.executeFile",
+        "title": "CAGE: Execute Current File",
+        "category": "CAGE"
+      },
+      {
+        "command": "cage.uploadFile",
+        "title": "CAGE: Upload File to Workspace",
+        "category": "CAGE"
+      },
+      {
+        "command": "cage.viewWorkspace",
+        "title": "CAGE: View Workspace Files",
+        "category": "CAGE"
+      },
+      {
+        "command": "cage.configure",
+        "title": "CAGE: Configure Connection",
+        "category": "CAGE"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "cage.executeSelection",
+        "key": "ctrl+shift+e",
+        "mac": "cmd+shift+e",
+        "when": "editorTextFocus"
+      }
+    ],
+    "configuration": {
+      "title": "CAGE",
+      "properties": {
+        "cage.apiUrl": {
+          "type": "string",
+          "default": "http://127.0.0.1:8080",
+          "description": "CAGE orchestrator API URL"
+        },
+        "cage.apiKey": {
+          "type": "string",
+          "default": "",
+          "description": "API key for authentication"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src --ext ts"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/vscode": "^1.85.0",
+    "@typescript-eslint/eslint-plugin": "^6.15.0",
+    "@typescript-eslint/parser": "^6.15.0",
+    "eslint": "^8.56.0",
+    "typescript": "^5.3.3"
+  },
+  "dependencies": {
+    "axios": "^1.6.0"
+  }
+}

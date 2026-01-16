@@ -1,0 +1,38 @@
+[package]
+name = "cage-cli"
+version = "1.0.0"
+edition = "2021"
+rust-version = "1.75"
+authors = ["CAGE Project"]
+description = "CLI tool for CAGE - Contained AI-Generated Code Execution"
+license = "MIT"
+
+[[bin]]
+name = "cage"
+path = "src/main.rs"
+
+[dependencies]
+# HTTP client
+reqwest = { version = "0.11", features = ["json", "blocking", "multipart"] }
+
+# CLI framework
+clap = { version = "4.4", features = ["derive", "cargo"] }
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Error handling
+anyhow = "1.0"
+thiserror = "1.0"
+
+# Terminal colors and formatting
+colored = "2.1"
+
+# File operations
+base64 = "0.21"
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true

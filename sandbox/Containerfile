@@ -1,0 +1,89 @@
+# CAGE Sandbox Container Image
+# A secure, minimal Python execution environment for LLM-generated code
+#
+# Security features:
+# - Non-root user execution
+# - Minimal package set to reduce attack surface
+# - No sudo, no package managers in runtime
+# - Designed for read-only root filesystem with tmpfs mounts
+
+FROM python:3.12-slim-bookworm AS builder
+
+# Install build dependencies for Python packages
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    gcc \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create a virtual environment for isolation
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Upgrade pip and install Python packages
+COPY requirements.txt /tmp/requirements.txt
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r /tmp/requirements.txt
+
+# ============================================
+# Runtime Stage - Minimal secure image
+# ============================================
+FROM python:3.12-slim-bookworm AS runtime
+
+# Security: Create non-root user
+RUN groupadd --gid 1000 sandbox && \
+    useradd --uid 1000 --gid 1000 --shell /bin/bash --create-home sandbox
+
+# Install minimal runtime dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    # Core utilities (minimal set)
+    coreutils \
+    procps \
+    bash \
+    # Node.js for JavaScript execution
+    nodejs \
+    npm \
+    # For matplotlib and other GUI libs (headless)
+    libgl1-mesa-glx \
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender1 \
+    libfontconfig1 \
+    fonts-dejavu-core \
+    # For pandas/numpy
+    libgomp1 \
+    && rm -rf /var/lib/apt/lists/* \
+    # Security: Remove potentially dangerous utilities
+    && rm -f /usr/bin/apt* /usr/bin/dpkg* \
+    && rm -f /usr/bin/wget /usr/bin/curl 2>/dev/null || true
+
+# Copy virtual environment from builder
+COPY --from=builder /opt/venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONHASHSEED=random
+
+# Set matplotlib to use non-interactive backend
+ENV MPLBACKEND=Agg
+
+# Create and configure working directory
+RUN mkdir -p /mnt/data && chown sandbox:sandbox /mnt/data
+WORKDIR /mnt/data
+
+# Security: Set restrictive umask
+ENV UMASK=0077
+
+# Switch to non-root user
+USER sandbox
+
+# Default command - idle process for container to stay alive
+# The orchestrator will exec commands into this container
+CMD ["sleep", "infinity"]
+
+# Labels
+LABEL org.opencontainers.image.title="CAGE Sandbox"
+LABEL org.opencontainers.image.description="Secure Python sandbox for LLM code execution"
+LABEL org.opencontainers.image.version="1.0.0"
+LABEL org.opencontainers.image.vendor="CAGE Project"

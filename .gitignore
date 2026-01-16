@@ -1,0 +1,51 @@
+# Build artifacts
+/orchestrator/target/
+/cli/target/
+/admin-tui/cage-tui*
+*.exe
+
+# Data and runtime files
+/data/
+*.log
+*.pid
+
+# Config with secrets
+config/cage.yaml
+!config/cage.yaml.example
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Rust
+**/*.rs.bk
+Cargo.lock
+
+# Go
+admin-tui/go.sum
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+*.egg-info/
+.eggs/
+*.egg
+.venv/
+venv/
+
+# Node (for client generation)
+node_modules/
+clients/
+
+# Containers
+*.tar
+.claude/

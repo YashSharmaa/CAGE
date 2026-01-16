@@ -1,0 +1,39 @@
+{
+  "name": "@cage/sdk",
+  "version": "1.0.0",
+  "description": "JavaScript/TypeScript SDK for CAGE - Contained AI-Generated Code Execution",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "jest",
+    "lint": "eslint src/**/*.ts",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "cage",
+    "sandbox",
+    "code-execution",
+    "llm",
+    "ai"
+  ],
+  "author": "CAGE Project",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cage-project/cage"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "dependencies": {
+    "ws": "^8.16.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/ws": "^8.5.10",
+    "typescript": "^5.3.0"
+  }
+}

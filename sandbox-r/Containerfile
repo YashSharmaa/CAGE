@@ -1,0 +1,53 @@
+# CAGE Sandbox Container Image for R
+# Secure R execution environment for statistical computing and data analysis
+
+FROM r-base:4.3.2 AS runtime
+
+# Install system dependencies first
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    # Core utilities
+    coreutils \
+    procps \
+    bash \
+    # R package dependencies
+    libcurl4-openssl-dev \
+    libssl-dev \
+    libxml2-dev \
+    libfontconfig1-dev \
+    libharfbuzz-dev \
+    libfribidi-dev \
+    libfreetype6-dev \
+    libpng-dev \
+    libtiff5-dev \
+    libjpeg-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install common R packages as root
+RUN R -e "install.packages(c('ggplot2', 'dplyr', 'jsonlite'), repos='https://cran.rstudio.com/')"
+
+# Security: Create non-root user after packages
+RUN groupadd --gid 1001 sandbox || true && \
+    useradd --uid 1001 --gid 1001 --shell /bin/bash --create-home sandbox || true
+
+# Create working directory
+RUN mkdir -p /mnt/data && chown 1001:1001 /mnt/data
+
+# Security: Remove package managers
+RUN rm -f /usr/bin/apt* /usr/bin/dpkg* && \
+    rm -f /usr/bin/wget /usr/bin/curl 2>/dev/null || true
+WORKDIR /mnt/data
+
+# Security: Set restrictive umask
+ENV UMASK=0077
+
+# Switch to non-root user
+USER sandbox
+
+# Default command - idle process
+CMD ["sleep", "infinity"]
+
+# Labels
+LABEL org.opencontainers.image.title="CAGE R Sandbox"
+LABEL org.opencontainers.image.description="Secure R sandbox for LLM code execution"
+LABEL org.opencontainers.image.version="1.0.0"
+LABEL org.opencontainers.image.vendor="CAGE Project"

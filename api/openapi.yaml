@@ -1,0 +1,1247 @@
+openapi: 3.1.0
+info:
+  title: CAGE - Contained AI-generated Code Execution
+  description: |
+    A secure sandboxed code execution platform for LLM agents.
+
+    CAGE provides isolated container environments for safely executing
+    LLM-generated code with fine-grained access control, resource limits,
+    and comprehensive auditing.
+  version: 1.0.0
+  contact:
+    name: CAGE Support
+  license:
+    name: MIT
+    identifier: MIT
+
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+  - url: https://cage.example.com
+    description: Production server
+
+tags:
+  - name: execution
+    description: Code execution operations
+  - name: files
+    description: File management operations
+  - name: sessions
+    description: Session lifecycle management
+  - name: admin
+    description: Administrative operations (requires admin privileges)
+  - name: health
+    description: Health check endpoints
+
+paths:
+  /health:
+    get:
+      tags:
+        - health
+      summary: Health check
+      description: Returns the health status of the CAGE orchestrator
+      operationId: healthCheck
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  /api/v1/execute:
+    post:
+      tags:
+        - execution
+      summary: Execute code in sandbox
+      description: |
+        Executes the provided code in the user's sandboxed container environment.
+        If no container exists for the user, one will be created automatically.
+
+        The execution is synchronous with a configurable timeout (default 30s).
+        For long-running tasks, consider using async execution.
+      operationId: executeCode
+      security:
+        - bearerAuth: []
+        - apiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExecuteRequest'
+            examples:
+              python_hello:
+                summary: Simple Python hello world
+                value:
+                  language: python
+                  code: "print('Hello from CAGE!')"
+              python_with_files:
+                summary: Python reading a file
+                value:
+                  language: python
+                  code: |
+                    import pandas as pd
+                    df = pd.read_csv('/mnt/data/input.csv')
+                    print(df.describe())
+                  timeout_seconds: 60
+      responses:
+        '200':
+          description: Code executed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecuteResponse'
+        '400':
+          description: Invalid request (malformed code or unsupported language)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '408':
+          description: Execution timed out
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecuteResponse'
+        '429':
+          description: Too many requests or execution already in progress
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/execute/async:
+    post:
+      tags:
+        - execution
+      summary: Execute code asynchronously
+      description: |
+        Submits code for asynchronous execution and returns a job ID immediately.
+        Use the job status endpoint to poll for results.
+      operationId: executeCodeAsync
+      security:
+        - bearerAuth: []
+        - apiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExecuteRequest'
+      responses:
+        '202':
+          description: Execution job accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AsyncJobResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Too many concurrent jobs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/jobs/{job_id}:
+    get:
+      tags:
+        - execution
+      summary: Get async job status and result
+      description: Returns the status and result (if complete) of an async execution job
+      operationId: getJobStatus
+      security:
+        - bearerAuth: []
+        - apiKeyAuth: []
+      parameters:
+        - name: job_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: The job ID returned from async execute
+      responses:
+        '200':
+          description: Job status retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobStatusResponse'
+        '404':
+          description: Job not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/files:
+    get:
+      tags:
+        - files
+      summary: List files in workspace
+      description: Returns a list of files in the user's sandbox workspace directory
+      operationId: listFiles
+      security:
+        - bearerAuth: []
+        - apiKeyAuth: []
+      parameters:
+        - name: path
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "/"
+          description: Subdirectory path within workspace (default is root)
+        - name: recursive
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+          description: List files recursively
+      responses:
+        '200':
+          description: File list retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileListResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    post:
+      tags:
+        - files
+      summary: Upload file to workspace
+      description: |
+        Uploads a file to the user's sandbox workspace.
+        Maximum file size is configurable (default 100MB).
+      operationId: uploadFile
+      security:
+        - bearerAuth: []
+        - apiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: File to upload
+                path:
+                  type: string
+                  description: Target path within workspace (default is root)
+                  default: "/"
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FileUploadRequest'
+      responses:
+        '201':
+          description: File uploaded successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileUploadResponse'
+        '400':
+          description: Invalid file or path
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '413':
+          description: File too large
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/files/{filepath}:
+    get:
+      tags:
+        - files
+      summary: Download file from workspace
+      description: Downloads a file from the user's sandbox workspace
+      operationId: downloadFile
+      security:
+        - bearerAuth: []
+        - apiKeyAuth: []
+      parameters:
+        - name: filepath
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Path to file within workspace (URL encoded)
+      responses:
+        '200':
+          description: File content
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+            text/plain:
+              schema:
+                type: string
+            image/*:
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: File not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      tags:
+        - files
+      summary: Delete file from workspace
+      description: Deletes a file from the user's sandbox workspace
+      operationId: deleteFile
+      security:
+        - bearerAuth: []
+        - apiKeyAuth: []
+      parameters:
+        - name: filepath
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Path to file within workspace (URL encoded)
+      responses:
+        '204':
+          description: File deleted successfully
+        '404':
+          description: File not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/session:
+    get:
+      tags:
+        - sessions
+      summary: Get current session info
+      description: Returns information about the user's current sandbox session
+      operationId: getSession
+      security:
+        - bearerAuth: []
+        - apiKeyAuth: []
+      responses:
+        '200':
+          description: Session information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionInfo'
+        '404':
+          description: No active session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    post:
+      tags:
+        - sessions
+      summary: Create or restart session
+      description: |
+        Creates a new sandbox session or restarts an existing one.
+        This will create a fresh container with a clean filesystem (except for persisted workspace files).
+      operationId: createSession
+      security:
+        - bearerAuth: []
+        - apiKeyAuth: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSessionRequest'
+      responses:
+        '201':
+          description: Session created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionInfo'
+        '200':
+          description: Existing session restarted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionInfo'
+
+    delete:
+      tags:
+        - sessions
+      summary: Terminate session
+      description: |
+        Terminates the user's sandbox session and stops the container.
+        Workspace files are preserved unless `purge_data` is true.
+      operationId: terminateSession
+      security:
+        - bearerAuth: []
+        - apiKeyAuth: []
+      parameters:
+        - name: purge_data
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+          description: Also delete all workspace files
+      responses:
+        '204':
+          description: Session terminated
+        '404':
+          description: No active session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # Admin endpoints
+  /api/v1/admin/sessions:
+    get:
+      tags:
+        - admin
+      summary: List all sessions
+      description: Returns a list of all active sandbox sessions across all users
+      operationId: adminListSessions
+      security:
+        - adminAuth: []
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [running, stopped, all]
+            default: all
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 100
+            maximum: 1000
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: List of sessions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminSessionListResponse'
+        '401':
+          description: Admin authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Insufficient privileges
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/admin/sessions/{user_id}:
+    get:
+      tags:
+        - admin
+      summary: Get session details
+      description: Returns detailed information about a specific user's session
+      operationId: adminGetSession
+      security:
+        - adminAuth: []
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Session details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminSessionDetail'
+        '404':
+          description: Session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      tags:
+        - admin
+      summary: Force terminate session
+      description: Forcefully terminates a user's session (admin override)
+      operationId: adminTerminateSession
+      security:
+        - adminAuth: []
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: purge_data
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '204':
+          description: Session terminated
+        '404':
+          description: Session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/admin/logs:
+    get:
+      tags:
+        - admin
+      summary: Get system logs
+      description: Returns orchestrator logs with optional filtering
+      operationId: adminGetLogs
+      security:
+        - adminAuth: []
+      parameters:
+        - name: user_id
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by user ID
+        - name: level
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [debug, info, warn, error]
+          description: Minimum log level
+        - name: since
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+          description: Return logs since this timestamp
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 100
+            maximum: 10000
+      responses:
+        '200':
+          description: Log entries
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LogsResponse'
+
+  /api/v1/admin/stats:
+    get:
+      tags:
+        - admin
+      summary: Get system statistics
+      description: Returns aggregate statistics about the CAGE system
+      operationId: adminGetStats
+      security:
+        - adminAuth: []
+      responses:
+        '200':
+          description: System statistics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemStats'
+
+  /api/v1/admin/users:
+    get:
+      tags:
+        - admin
+      summary: List configured users
+      description: Returns a list of all configured users and their policies
+      operationId: adminListUsers
+      security:
+        - adminAuth: []
+      responses:
+        '200':
+          description: User list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserListResponse'
+
+    post:
+      tags:
+        - admin
+      summary: Create or update user
+      description: Creates a new user or updates an existing user's configuration
+      operationId: adminUpsertUser
+      security:
+        - adminAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserConfig'
+      responses:
+        '200':
+          description: User updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserConfig'
+        '201':
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserConfig'
+
+  /api/v1/admin/users/{user_id}:
+    delete:
+      tags:
+        - admin
+      summary: Delete user
+      description: Deletes a user configuration (does not delete their data)
+      operationId: adminDeleteUser
+      security:
+        - adminAuth: []
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: User deleted
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: User JWT token for authentication
+    apiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: API key for service-to-service authentication
+    adminAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Admin JWT token with elevated privileges
+
+  schemas:
+    HealthResponse:
+      type: object
+      required:
+        - status
+        - version
+      properties:
+        status:
+          type: string
+          enum: [healthy, degraded, unhealthy]
+        version:
+          type: string
+          example: "1.0.0"
+        uptime_seconds:
+          type: integer
+          format: int64
+        active_sessions:
+          type: integer
+        podman_version:
+          type: string
+
+    ExecuteRequest:
+      type: object
+      required:
+        - code
+      properties:
+        language:
+          type: string
+          enum: [python, javascript, bash]
+          default: python
+          description: Programming language of the code
+        code:
+          type: string
+          description: Code to execute
+          maxLength: 1000000
+        timeout_seconds:
+          type: integer
+          minimum: 1
+          maximum: 300
+          default: 30
+          description: Maximum execution time in seconds
+        working_dir:
+          type: string
+          description: Working directory within sandbox (default is /mnt/data)
+        env:
+          type: object
+          additionalProperties:
+            type: string
+          description: Additional environment variables
+
+    ExecuteResponse:
+      type: object
+      required:
+        - execution_id
+        - status
+      properties:
+        execution_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [success, error, timeout, killed]
+        stdout:
+          type: string
+          description: Standard output from execution
+        stderr:
+          type: string
+          description: Standard error from execution
+        exit_code:
+          type: integer
+          description: Process exit code
+        duration_ms:
+          type: integer
+          format: int64
+          description: Execution duration in milliseconds
+        files_created:
+          type: array
+          items:
+            type: string
+          description: List of files created during execution
+        resource_usage:
+          $ref: '#/components/schemas/ResourceUsage'
+
+    AsyncJobResponse:
+      type: object
+      required:
+        - job_id
+        - status
+      properties:
+        job_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [queued, running]
+        poll_url:
+          type: string
+          format: uri
+          description: URL to poll for job status
+
+    JobStatusResponse:
+      type: object
+      required:
+        - job_id
+        - status
+      properties:
+        job_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [queued, running, completed, failed, timeout]
+        result:
+          $ref: '#/components/schemas/ExecuteResponse'
+        queued_at:
+          type: string
+          format: date-time
+        started_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
+
+    FileListResponse:
+      type: object
+      required:
+        - files
+        - path
+      properties:
+        path:
+          type: string
+          description: Current directory path
+        files:
+          type: array
+          items:
+            $ref: '#/components/schemas/FileInfo'
+        total_size_bytes:
+          type: integer
+          format: int64
+
+    FileInfo:
+      type: object
+      required:
+        - name
+        - type
+      properties:
+        name:
+          type: string
+        path:
+          type: string
+        type:
+          type: string
+          enum: [file, directory]
+        size_bytes:
+          type: integer
+          format: int64
+        modified_at:
+          type: string
+          format: date-time
+        permissions:
+          type: string
+          example: "rw-r--r--"
+
+    FileUploadRequest:
+      type: object
+      required:
+        - filename
+        - content
+      properties:
+        filename:
+          type: string
+          description: Target filename
+          pattern: "^[a-zA-Z0-9._-]+$"
+        path:
+          type: string
+          description: Target directory path
+          default: "/"
+        content:
+          type: string
+          format: byte
+          description: Base64 encoded file content
+        overwrite:
+          type: boolean
+          default: true
+          description: Overwrite if file exists
+
+    FileUploadResponse:
+      type: object
+      required:
+        - path
+        - size_bytes
+      properties:
+        path:
+          type: string
+          description: Full path of uploaded file
+        size_bytes:
+          type: integer
+          format: int64
+        checksum:
+          type: string
+          description: SHA-256 checksum of uploaded file
+
+    SessionInfo:
+      type: object
+      required:
+        - session_id
+        - user_id
+        - status
+      properties:
+        session_id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+        container_id:
+          type: string
+          description: Podman container ID
+        status:
+          type: string
+          enum: [running, stopped, creating, error]
+        created_at:
+          type: string
+          format: date-time
+        last_activity:
+          type: string
+          format: date-time
+        resource_limits:
+          $ref: '#/components/schemas/ResourceLimits'
+        current_usage:
+          $ref: '#/components/schemas/ResourceUsage'
+        network_policy:
+          $ref: '#/components/schemas/NetworkPolicy'
+
+    CreateSessionRequest:
+      type: object
+      properties:
+        language:
+          type: string
+          enum: [python, javascript]
+          default: python
+          description: Primary language runtime for the session
+        reset_workspace:
+          type: boolean
+          default: false
+          description: Clear workspace files on session create
+
+    ResourceLimits:
+      type: object
+      properties:
+        max_memory_mb:
+          type: integer
+          description: Maximum memory in megabytes
+          example: 1024
+        max_cpus:
+          type: number
+          format: float
+          description: Maximum CPU cores
+          example: 1.0
+        max_pids:
+          type: integer
+          description: Maximum number of processes
+          example: 100
+        max_execution_time_seconds:
+          type: integer
+          description: Maximum single execution time
+          example: 30
+        max_disk_mb:
+          type: integer
+          description: Maximum workspace disk usage
+          example: 1024
+
+    ResourceUsage:
+      type: object
+      properties:
+        memory_mb:
+          type: number
+          format: float
+        cpu_percent:
+          type: number
+          format: float
+        disk_mb:
+          type: number
+          format: float
+        pids:
+          type: integer
+
+    NetworkPolicy:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+          default: false
+          description: Whether network access is enabled
+        allowed_hosts:
+          type: array
+          items:
+            type: string
+          description: List of allowed hostnames/IPs
+          example: ["api.example.com", "10.0.0.0/8"]
+        allowed_ports:
+          type: array
+          items:
+            type: integer
+          description: List of allowed destination ports
+          example: [80, 443]
+
+    AdminSessionListResponse:
+      type: object
+      required:
+        - sessions
+        - total
+      properties:
+        sessions:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminSessionSummary'
+        total:
+          type: integer
+        offset:
+          type: integer
+        limit:
+          type: integer
+
+    AdminSessionSummary:
+      type: object
+      required:
+        - user_id
+        - status
+      properties:
+        user_id:
+          type: string
+        container_id:
+          type: string
+        status:
+          type: string
+          enum: [running, stopped, error]
+        created_at:
+          type: string
+          format: date-time
+        last_activity:
+          type: string
+          format: date-time
+        cpu_percent:
+          type: number
+          format: float
+        memory_mb:
+          type: number
+          format: float
+        execution_count:
+          type: integer
+        error_count:
+          type: integer
+        warnings:
+          type: array
+          items:
+            type: string
+          description: Any active warnings (high resource usage, security events)
+
+    AdminSessionDetail:
+      allOf:
+        - $ref: '#/components/schemas/SessionInfo'
+        - type: object
+          properties:
+            execution_history:
+              type: array
+              items:
+                $ref: '#/components/schemas/ExecutionSummary'
+              description: Recent execution history
+            files:
+              type: array
+              items:
+                $ref: '#/components/schemas/FileInfo'
+            security_events:
+              type: array
+              items:
+                $ref: '#/components/schemas/SecurityEvent'
+
+    ExecutionSummary:
+      type: object
+      properties:
+        execution_id:
+          type: string
+          format: uuid
+        timestamp:
+          type: string
+          format: date-time
+        language:
+          type: string
+        code_hash:
+          type: string
+          description: SHA-256 of executed code
+        status:
+          type: string
+          enum: [success, error, timeout, killed]
+        duration_ms:
+          type: integer
+        exit_code:
+          type: integer
+
+    SecurityEvent:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        event_type:
+          type: string
+          enum: [network_blocked, resource_exceeded, suspicious_syscall, file_access_denied]
+        severity:
+          type: string
+          enum: [info, warning, critical]
+        details:
+          type: string
+        source_ip:
+          type: string
+
+    LogsResponse:
+      type: object
+      required:
+        - logs
+      properties:
+        logs:
+          type: array
+          items:
+            $ref: '#/components/schemas/LogEntry'
+        has_more:
+          type: boolean
+
+    LogEntry:
+      type: object
+      required:
+        - timestamp
+        - level
+        - message
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        level:
+          type: string
+          enum: [debug, info, warn, error]
+        message:
+          type: string
+        user_id:
+          type: string
+        execution_id:
+          type: string
+        container_id:
+          type: string
+        metadata:
+          type: object
+          additionalProperties: true
+
+    SystemStats:
+      type: object
+      properties:
+        uptime_seconds:
+          type: integer
+          format: int64
+        active_sessions:
+          type: integer
+        total_executions:
+          type: integer
+          format: int64
+        executions_last_hour:
+          type: integer
+        average_execution_time_ms:
+          type: number
+          format: float
+        total_errors:
+          type: integer
+          format: int64
+        errors_last_hour:
+          type: integer
+        security_events_last_hour:
+          type: integer
+        resource_usage:
+          type: object
+          properties:
+            total_cpu_percent:
+              type: number
+              format: float
+            total_memory_mb:
+              type: number
+              format: float
+            total_disk_mb:
+              type: number
+              format: float
+
+    UserListResponse:
+      type: object
+      required:
+        - users
+      properties:
+        users:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserConfig'
+
+    UserConfig:
+      type: object
+      required:
+        - user_id
+      properties:
+        user_id:
+          type: string
+        api_key_hash:
+          type: string
+          description: SHA-256 hash of the user's API key (write-only)
+        enabled:
+          type: boolean
+          default: true
+        resource_limits:
+          $ref: '#/components/schemas/ResourceLimits'
+        network_policy:
+          $ref: '#/components/schemas/NetworkPolicy'
+        allowed_languages:
+          type: array
+          items:
+            type: string
+            enum: [python, javascript, bash]
+          default: [python]
+        gpu_enabled:
+          type: boolean
+          default: false
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+          description: Error code
+          example: "EXECUTION_TIMEOUT"
+        message:
+          type: string
+          description: Human-readable error message
+        details:
+          type: object
+          additionalProperties: true
+          description: Additional error details
+        request_id:
+          type: string
+          format: uuid
+          description: Request ID for debugging

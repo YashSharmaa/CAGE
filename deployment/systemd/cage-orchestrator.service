@@ -1,0 +1,44 @@
+[Unit]
+Description=CAGE Orchestrator - Secure Sandboxed Code Execution
+Documentation=https://github.com/cage-project/cage
+After=network.target podman.service
+Wants=podman.service
+
+[Service]
+Type=simple
+User=cage
+Group=cage
+WorkingDirectory=/opt/cage
+
+# Start orchestrator
+ExecStart=/opt/cage/bin/cage-orchestrator
+
+# Restart policy
+Restart=on-failure
+RestartSec=10s
+StartLimitBurst=5
+StartLimitInterval=300s
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/cage /var/log/cage
+
+# Resource limits
+LimitNOFILE=65536
+LimitNPROC=4096
+
+# Environment
+Environment="CAGE__DATA_DIR=/var/lib/cage"
+Environment="CAGE__LOG_LEVEL=info"
+EnvironmentFile=-/etc/cage/environment
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=cage-orchestrator
+
+[Install]
+WantedBy=multi-user.target

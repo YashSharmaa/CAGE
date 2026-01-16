@@ -1,0 +1,51 @@
+# CAGE Sandbox Container Image for TypeScript/Deno
+# Secure Deno execution environment for modern JavaScript/TypeScript
+
+FROM denoland/deno:debian-1.40.0 AS runtime
+
+# Security: Create non-root user
+RUN groupadd --gid 1000 sandbox && \
+    useradd --uid 1000 --gid 1000 --shell /bin/bash --create-home sandbox
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    # Core utilities
+    coreutils \
+    procps \
+    bash \
+    && rm -rf /var/lib/apt/lists/* \
+    # Security: Remove package managers
+    && rm -f /usr/bin/apt* /usr/bin/dpkg* \
+    && rm -f /usr/bin/wget /usr/bin/curl 2>/dev/null || true
+
+# Create working directory
+RUN mkdir -p /mnt/data && chown sandbox:sandbox /mnt/data
+WORKDIR /mnt/data
+
+# Security: Set restrictive umask
+ENV UMASK=0077
+
+# Deno cache directory
+ENV DENO_DIR=/home/sandbox/.cache/deno
+
+# Switch to non-root user
+USER sandbox
+
+# Pre-cache commonly used Deno modules
+RUN deno cache --reload \
+    https://deno.land/std@0.210.0/fs/mod.ts \
+    https://deno.land/std@0.210.0/http/mod.ts \
+    https://deno.land/std@0.210.0/path/mod.ts \
+    https://deno.land/std@0.210.0/encoding/csv.ts \
+    https://deno.land/std@0.210.0/encoding/json.ts \
+    https://deno.land/std@0.210.0/datetime/mod.ts \
+    https://deno.land/std@0.210.0/collections/mod.ts || true
+
+# Default command - idle process
+CMD ["sleep", "infinity"]
+
+# Labels
+LABEL org.opencontainers.image.title="CAGE TypeScript Sandbox"
+LABEL org.opencontainers.image.description="Secure TypeScript/Deno sandbox for LLM code execution"
+LABEL org.opencontainers.image.version="1.0.0"
+LABEL org.opencontainers.image.vendor="CAGE Project"

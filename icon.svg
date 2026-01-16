@@ -1,0 +1,46 @@
+<svg width="128" height="128" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="iconGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4a90e2;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#7b68ee;stop-opacity:1" />
+    </linearGradient>
+
+    <linearGradient id="codeGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#00ff88;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#00cc6a;stop-opacity:1" />
+    </linearGradient>
+
+    <filter id="shadow">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+
+  <!-- Background circle -->
+  <circle cx="64" cy="64" r="60" fill="url(#iconGrad)" filter="url(#shadow)"/>
+
+  <!-- Cage bars -->
+  <g opacity="0.9">
+    <!-- Vertical bars -->
+    <rect x="24" y="28" width="5" height="72" fill="white" opacity="0.7" rx="2"/>
+    <rect x="38" y="28" width="5" height="72" fill="white" opacity="0.85" rx="2"/>
+    <rect x="52" y="28" width="5" height="72" fill="white" rx="2"/>
+    <rect x="66" y="28" width="5" height="72" fill="white" rx="2"/>
+    <rect x="80" y="28" width="5" height="72" fill="white" opacity="0.85" rx="2"/>
+    <rect x="94" y="28" width="5" height="72" fill="white" opacity="0.7" rx="2"/>
+
+    <!-- Horizontal bars -->
+    <rect x="24" y="28" width="75" height="5" fill="white" rx="2"/>
+    <rect x="24" y="95" width="75" height="5" fill="white" rx="2"/>
+  </g>
+
+  <!-- Code brackets centered -->
+  <text x="64" y="75" font-family="Courier New, monospace" font-size="42"
+        fill="url(#codeGrad)" text-anchor="middle" font-weight="bold">&lt;/&gt;</text>
+
+  <!-- Lock indicator -->
+  <g transform="translate(94, 90)">
+    <circle cx="0" cy="0" r="7" fill="url(#codeGrad)"/>
+    <rect x="-3" y="0" width="6" height="8" fill="url(#codeGrad)" rx="1"/>
+    <circle cx="0" cy="3" r="1.5" fill="white"/>
+  </g>
+</svg>

@@ -1,0 +1,53 @@
+# CAGE Sandbox Container Image for Go
+# Secure Go execution environment
+
+FROM golang:1.23-bookworm AS runtime
+
+# Security: Create non-root user
+RUN groupadd --gid 1000 sandbox && \
+    useradd --uid 1000 --gid 1000 --shell /bin/bash --create-home sandbox
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    # Core utilities
+    coreutils \
+    procps \
+    bash \
+    && rm -rf /var/lib/apt/lists/* \
+    # Security: Remove package managers
+    && rm -f /usr/bin/apt* /usr/bin/dpkg* \
+    && rm -f /usr/bin/wget /usr/bin/curl 2>/dev/null || true
+
+# Pre-download common Go modules for faster execution
+RUN mkdir -p /tmp/gomod && cd /tmp/gomod && \
+    go mod init temp && \
+    go get github.com/gin-gonic/gin@latest && \
+    go get github.com/gorilla/mux@latest && \
+    go get gopkg.in/yaml.v3@latest && \
+    go get github.com/stretchr/testify@latest && \
+    rm -rf /tmp/gomod
+
+# Create working directory
+RUN mkdir -p /mnt/data && chown sandbox:sandbox /mnt/data
+
+# Set Go environment for sandbox user (use /tmp for cache since root is read-only)
+ENV GOPATH=/tmp/go
+ENV GOCACHE=/tmp/go-build
+ENV GOCACHEPROG=
+ENV GOTMPDIR=/tmp
+
+# Switch to non-root user
+USER sandbox
+WORKDIR /mnt/data
+
+# Security: Set restrictive umask
+ENV UMASK=0077
+
+# Default command - idle process
+CMD ["sleep", "infinity"]
+
+# Labels
+LABEL org.opencontainers.image.title="CAGE Go Sandbox"
+LABEL org.opencontainers.image.description="Secure Go sandbox for LLM code execution"
+LABEL org.opencontainers.image.version="1.0.0"
+LABEL org.opencontainers.image.vendor="CAGE Project"

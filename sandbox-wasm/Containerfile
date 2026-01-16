@@ -1,0 +1,51 @@
+# CAGE Sandbox Container Image for WebAssembly
+# Secure WASM execution environment using Wasmtime
+
+FROM debian:bookworm-slim AS runtime
+
+# Install Wasmtime
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    wget \
+    xz-utils \
+    && rm -rf /var/lib/apt/lists/*
+
+# Download and install Wasmtime
+RUN wget -q https://github.com/bytecodealliance/wasmtime/releases/download/v16.0.0/wasmtime-v16.0.0-x86_64-linux.tar.xz && \
+    tar -xf wasmtime-v16.0.0-x86_64-linux.tar.xz && \
+    mv wasmtime-v16.0.0-x86_64-linux/wasmtime /usr/local/bin/ && \
+    rm -rf wasmtime-v16.0.0-x86_64-linux* && \
+    chmod +x /usr/local/bin/wasmtime
+
+# Security: Create non-root user
+RUN groupadd --gid 1000 sandbox && \
+    useradd --uid 1000 --gid 1000 --shell /bin/bash --create-home sandbox
+
+# Install minimal runtime dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    coreutils \
+    procps \
+    bash \
+    && rm -rf /var/lib/apt/lists/* \
+    # Security: Remove package managers and wget
+    && rm -f /usr/bin/apt* /usr/bin/dpkg* \
+    && rm -f /usr/bin/wget /usr/bin/curl 2>/dev/null || true
+
+# Create working directory
+RUN mkdir -p /mnt/data && chown sandbox:sandbox /mnt/data
+
+# Switch to non-root user
+USER sandbox
+WORKDIR /mnt/data
+
+# Security: Set restrictive umask
+ENV UMASK=0077
+
+# Default command - idle process
+CMD ["sleep", "infinity"]
+
+# Labels
+LABEL org.opencontainers.image.title="CAGE WebAssembly Sandbox"
+LABEL org.opencontainers.image.description="Secure WebAssembly sandbox for LLM code execution"
+LABEL org.opencontainers.image.version="1.0.0"
+LABEL org.opencontainers.image.vendor="CAGE Project"

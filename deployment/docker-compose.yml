@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  orchestrator:
+    build:
+      context: ../orchestrator
+      dockerfile: Dockerfile
+    image: cage-orchestrator:latest
+    container_name: cage-orchestrator
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - /var/run/podman/podman.sock:/var/run/podman/podman.sock
+      - cage-data:/var/lib/cage
+      - cage-logs:/var/log/cage
+      - ../config/cage.yaml:/etc/cage/config.yaml:ro
+      - ../sandbox/seccomp.json:/etc/cage/seccomp.json:ro
+    environment:
+      - CAGE__DATA_DIR=/var/lib/cage
+      - CAGE__HOST=0.0.0.0
+      - CAGE__PORT=8080
+      - CAGE__LOG_LEVEL=info
+      - CAGE__SECURITY__SECCOMP_PROFILE=/etc/cage/seccomp.json
+    env_file:
+      - .env
+    networks:
+      - cage-network
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - SYS_ADMIN  # Required for container management
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  cage-data:
+    driver: local
+  cage-logs:
+    driver: local
+
+networks:
+  cage-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.25.0.0/16

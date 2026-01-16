@@ -1,0 +1,111 @@
+<svg width="600" height="200" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background gradient -->
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1a2e;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#16213e;stop-opacity:1" />
+    </linearGradient>
+
+    <linearGradient id="cageGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4a90e2;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#7b68ee;stop-opacity:1" />
+    </linearGradient>
+
+    <linearGradient id="accentGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#00ff88;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#00cc6a;stop-opacity:1" />
+    </linearGradient>
+
+    <!-- Glow filter -->
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="600" height="200" fill="url(#bgGradient)" rx="10"/>
+
+  <!-- Container/Cage Icon (left side) -->
+  <g transform="translate(40, 50)">
+    <!-- Outer cage bars (vertical) -->
+    <rect x="0" y="0" width="4" height="100" fill="url(#cageGradient)" opacity="0.8"/>
+    <rect x="20" y="0" width="4" height="100" fill="url(#cageGradient)" opacity="0.9"/>
+    <rect x="40" y="0" width="4" height="100" fill="url(#cageGradient)"/>
+    <rect x="60" y="0" width="4" height="100" fill="url(#cageGradient)" opacity="0.9"/>
+    <rect x="80" y="0" width="4" height="100" fill="url(#cageGradient)" opacity="0.8"/>
+
+    <!-- Horizontal bars -->
+    <rect x="0" y="0" width="84" height="4" fill="url(#cageGradient)"/>
+    <rect x="0" y="96" width="84" height="4" fill="url(#cageGradient)"/>
+
+    <!-- Code symbol inside cage -->
+    <text x="42" y="58" font-family="Courier New, monospace" font-size="36"
+          fill="url(#accentGradient)" text-anchor="middle" font-weight="bold"
+          filter="url(#glow)">&lt;/&gt;</text>
+
+    <!-- Lock/Security indicator -->
+    <circle cx="42" cy="85" r="6" fill="url(#accentGradient)" opacity="0.8"/>
+    <rect x="39" y="85" width="6" height="8" fill="url(#accentGradient)" opacity="0.8" rx="1"/>
+  </g>
+
+  <!-- CAGE Text -->
+  <g transform="translate(160, 50)">
+    <text x="0" y="60" font-family="Arial, sans-serif" font-size="64"
+          font-weight="bold" fill="white" letter-spacing="4">CAGE</text>
+
+    <!-- Subtitle -->
+    <text x="0" y="90" font-family="Arial, sans-serif" font-size="14"
+          fill="#a8b2d1" letter-spacing="1">CONTAINED AI-GENERATED CODE EXECUTION</text>
+
+    <!-- Version badge -->
+    <g transform="translate(0, 100)">
+      <rect x="0" y="0" width="60" height="20" fill="url(#accentGradient)" rx="10"/>
+      <text x="30" y="14" font-family="Arial, sans-serif" font-size="11"
+            fill="#1a1a2e" text-anchor="middle" font-weight="bold">v1.0.0</text>
+    </g>
+
+    <!-- Status badge -->
+    <g transform="translate(70, 100)">
+      <rect x="0" y="0" width="80" height="20" fill="#00ff88" fill-opacity="0.2"
+            stroke="#00ff88" stroke-width="1.5" rx="10"/>
+      <circle cx="10" cy="10" r="3" fill="#00ff88"/>
+      <text x="18" y="14" font-family="Arial, sans-serif" font-size="10"
+            fill="#00ff88" font-weight="bold">PRODUCTION</text>
+    </g>
+  </g>
+
+  <!-- Tech badges (right side) -->
+  <g transform="translate(480, 60)">
+    <!-- Rust badge -->
+    <rect x="0" y="0" width="90" height="24" fill="#ce422b" fill-opacity="0.2"
+          stroke="#ce422b" stroke-width="1.5" rx="4"/>
+    <text x="45" y="16" font-family="Arial, sans-serif" font-size="12"
+          fill="#ce422b" text-anchor="middle" font-weight="bold">🦀 RUST</text>
+
+    <!-- Podman badge -->
+    <rect x="0" y="32" width="90" height="24" fill="#892ca0" fill-opacity="0.2"
+          stroke="#892ca0" stroke-width="1.5" rx="4"/>
+    <text x="45" y="48" font-family="Arial, sans-serif" font-size="12"
+          fill="#892ca0" text-anchor="middle" font-weight="bold">🐳 PODMAN</text>
+
+    <!-- Security badge -->
+    <rect x="0" y="64" width="90" height="24" fill="#00ff88" fill-opacity="0.2"
+          stroke="#00ff88" stroke-width="1.5" rx="4"/>
+    <text x="45" y="80" font-family="Arial, sans-serif" font-size="12"
+          fill="#00ff88" text-anchor="middle" font-weight="bold">🔒 SECURE</text>
+  </g>
+
+  <!-- Decorative code lines (background) -->
+  <g opacity="0.1">
+    <text x="20" y="30" font-family="Courier New, monospace" font-size="10" fill="white">
+      def execute(code): # Secure sandbox execution
+    </text>
+    <text x="20" y="180" font-family="Courier New, monospace" font-size="10" fill="white">
+      container.run(isolated=True, limits={'cpu': 1, 'mem': '512M'})
+    </text>
+  </g>
+</svg>

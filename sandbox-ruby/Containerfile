@@ -1,0 +1,60 @@
+# CAGE Sandbox Container Image for Ruby
+# Secure Ruby execution environment
+
+FROM ruby:3.3-slim-bookworm AS runtime
+
+# Security: Create non-root user
+RUN groupadd --gid 1000 sandbox && \
+    useradd --uid 1000 --gid 1000 --shell /bin/bash --create-home sandbox
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    # Core utilities
+    coreutils \
+    procps \
+    bash \
+    # Ruby build dependencies for gems
+    build-essential \
+    git \
+    libssl-dev \
+    zlib1g-dev \
+    && rm -rf /var/lib/apt/lists/* \
+    # Security: Remove package managers after installation
+    && rm -f /usr/bin/apt* /usr/bin/dpkg* \
+    && rm -f /usr/bin/wget /usr/bin/curl 2>/dev/null || true
+
+# Install common Ruby gems
+RUN gem install --no-document \
+    json \
+    csv \
+    yaml \
+    httparty \
+    nokogiri \
+    sinatra \
+    rack \
+    activerecord \
+    activesupport \
+    pry \
+    rspec \
+    rubocop \
+    faker \
+    dotenv
+
+# Create working directory
+RUN mkdir -p /mnt/data && chown sandbox:sandbox /mnt/data
+
+# Switch to non-root user
+USER sandbox
+WORKDIR /mnt/data
+
+# Security: Set restrictive umask
+ENV UMASK=0077
+
+# Default command - idle process
+CMD ["sleep", "infinity"]
+
+# Labels
+LABEL org.opencontainers.image.title="CAGE Ruby Sandbox"
+LABEL org.opencontainers.image.description="Secure Ruby sandbox for LLM code execution"
+LABEL org.opencontainers.image.version="1.0.0"
+LABEL org.opencontainers.image.vendor="CAGE Project"
